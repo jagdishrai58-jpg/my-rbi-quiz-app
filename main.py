@@ -10,9 +10,24 @@ st.title("🏦 RBI Assistant Smart Prep System")
 # ---------------- API SETUP ----------------
 if "GEMINI_API_KEY" in st.secrets:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-    model = genai.GenerativeModel("gemini-1.5-flash")
 else:
-    st.error("Add GEMINI_API_KEY in Streamlit secrets")
+    st.error("❌ Add GEMINI_API_KEY in Streamlit secrets")
+    st.stop()
+
+# ---------------- SAFE MODEL LOADING ----------------
+def load_model():
+    try:
+        return genai.GenerativeModel("models/gemini-1.5-flash")
+    except:
+        try:
+            return genai.GenerativeModel("models/gemini-1.5-pro")
+        except:
+            return None
+
+model = load_model()
+
+if model is None:
+    st.error("❌ No compatible model found. Check API / library version.")
     st.stop()
 
 # ---------------- SESSION STATE ----------------
@@ -31,7 +46,7 @@ if "start_time" not in st.session_state:
 if "submitted" not in st.session_state:
     st.session_state.submitted = False
 
-# ---------------- TOPIC ----------------
+# ---------------- INPUT ----------------
 topic = st.selectbox(
     "Select Topic",
     ["Banking Awareness", "Economy", "Insurance", "Current Affairs"]
@@ -39,10 +54,12 @@ topic = st.selectbox(
 
 news_input = st.text_area("Paste News Here", height=150)
 
-# ---------------- GENERATE QUESTIONS ----------------
+# ---------------- GENERATE MCQs ----------------
 if st.button("Generate MCQs"):
 
-    if news_input:
+    if news_input.strip() == "":
+        st.warning("⚠️ Paste news first!")
+    else:
         with st.spinner("Generating exam-level questions..."):
 
             prompt = f"""
@@ -83,12 +100,11 @@ if st.button("Generate MCQs"):
                 st.session_state.start_time = None
                 st.session_state.submitted = False
 
-                st.success("✅ Questions generated!")
+                st.success("✅ Questions generated successfully!")
 
             except Exception as e:
-                st.error(f"Error: {e}")
-    else:
-        st.warning("Paste news first!")
+                st.error("❌ Failed to generate questions.")
+                st.code(str(e))
 
 # ---------------- START TEST ----------------
 if st.session_state.quiz_started and st.session_state.start_time is None:
@@ -110,7 +126,7 @@ if st.session_state.start_time and not st.session_state.submitted:
 
     if remaining <= 0:
         st.session_state.submitted = True
-        st.error("⛔ Time Up! Auto-submitting...")
+        st.error("⛔ Time Up! Auto-submitted")
 
 # ---------------- QUESTIONS ----------------
 if st.session_state.start_time and not st.session_state.submitted:
@@ -159,8 +175,7 @@ if st.session_state.submitted:
 
     total = len(st.session_state.questions)
     accuracy = (correct / total) * 100 if total > 0 else 0
-
-    cutoff = total * 0.6  # 60% cutoff
+    cutoff = total * 0.6
 
     st.markdown(f"""
     ## 🎯 Final Score: {score:.2f}
@@ -171,7 +186,7 @@ if st.session_state.submitted:
     """)
 
     if score >= cutoff:
-        st.success("✅ Status: CLEARED (Above Cutoff)")
+        st.success("✅ Status: CLEARED")
     else:
         st.error("❌ Status: NOT CLEARED")
 
@@ -181,7 +196,6 @@ if st.session_state.submitted:
     for i, q in enumerate(st.session_state.questions):
 
         st.markdown(f"### Q{i+1}")
-
         st.write(f"Correct Answer: {q['answer']}")
         st.info(q["explanation"])
 
@@ -193,4 +207,4 @@ if st.session_state.questions:
         with open("questions.json", "w") as f:
             json.dump(st.session_state.questions, f, indent=4)
 
-        st.success("Saved successfully!")
+        st.success("✅ Questions saved!")
