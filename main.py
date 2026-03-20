@@ -11,7 +11,7 @@ st.info("Goal: 11 Hours Study. Current Focus: RBI Assistant & Insurance Exams.")
 if "GEMINI_API_KEY" in st.secrets:
     API_KEY = st.secrets["GEMINI_API_KEY"]
     genai.configure(api_key=API_KEY)
-    model = genai.GenerativeModel('gemini-2.0-flash')
+    model = genai.GenerativeModel('gemini-1.5-flash')
 else:
     st.error("Please add your GEMINI_API_KEY to the Streamlit Secrets.")
     st.stop()
